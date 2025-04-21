@@ -111,60 +111,55 @@
 
 
 
-                <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
-                <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
 
-                 {% comment %}
-    Buscar el primer video (alojado en Shopify o externo) asociado al producto.
-  {% endcomment %}
-  {%- assign first_video = null -%}
-  {%- for media in product.media -%}
-    {%- if media.media_type == 'video' or media.media_type == 'external_video' -%}
-      {%- assign first_video = media -%}
-      {%- break -%}
-    {%- endif -%}
-  {%- endfor -%}
-
-  {% comment %}
-    Si se encontró un video, renderizar el botón.
-  {% endcomment %}
-  {%- if first_video -%}
-    {%- liquid
-      assign video_url = ''
-      assign video_type = first_video.media_type
-
-      # Construir la URL adecuada para el iframe o la etiqueta de video
-      if video_type == 'external_video'
-        if first_video.host == 'youtube'
-          assign video_url = 'https://www.youtube.com/embed/' | append: first_video.external_id | append: '?autoplay=1&mute=0&controls=1&rel=0&modestbranding=1'
-        endif
-      elsif video_type == 'video'
-        # Obtener la URL directa del video HLS
-        assign video_url = first_video.sources[0].url
-        # Asegurarse de que la URL sea absoluta
-        if video_url contains 'cdn.shopify.com'
-          assign video_url = video_url
-        else
-          assign video_url = 'https://cdn.shopify.com' | append: video_url
-        endif
-      endif
-    -%}
-
-    {% comment %} Renderizar el botón solo si tenemos una URL válida {% endcomment %}
-    {% if video_url != '' %}
-      <div class="product__video-button-container" style="margin-top: 15px; margin-bottom: 15px;">
-        <button
-          type="button"
-          class="button button--secondary open-product-video-button"
-          data-video-type="{{ video_type }}"
-          data-video-src="{{ video_url | escape }}"
-          aria-label="{{ 'products.product.watch_video' | t }}"
-        >
-          {{ 'products.product.watch_video' | t }}
-        </button>
-      </div>
-    {% endif %}
+{% comment %}
+  Buscar el primer video (alojado en Shopify o externo) asociado al producto.
+{% endcomment %}
+{%- assign first_video = null -%}
+{%- for media in product.media -%}
+  {%- if media.media_type == 'video' or media.media_type == 'external_video' -%}
+    {%- assign first_video = media -%}
+    {%- break -%}
   {%- endif -%}
+{%- endfor -%}
+
+{% comment %}
+  Si se encontró un video, renderizar el botón.
+{% endcomment %}
+{%- if first_video -%}
+  {%- liquid
+    assign video_url = ''
+    assign video_type = first_video.media_type
+
+    # Construir la URL adecuada para el iframe o la etiqueta de video
+    if video_type == 'external_video'
+      if first_video.host == 'youtube'
+        # Añadimos parámetros para autoplay y controles razonables
+        assign video_url = 'https://www.youtube.com/embed/' | append: first_video.external_id | append: '?autoplay=1&modestbranding=1&rel=0'
+      elsif first_video.host == 'vimeo'
+        # Añadimos parámetros para autoplay y controles razonables
+        assign video_url = 'https://player.vimeo.com/video/' | append: first_video.external_id | append: '?autoplay=1&title=0&byline=0&portrait=0'
+      endif
+    elsif video_type == 'video'
+      # Para videos alojados en Shopify, usamos la primera fuente disponible
+      assign video_url = first_video.sources[0].url
+    endif
+  -%}
+
+  {% comment %} Renderizar el botón solo si tenemos una URL válida {% endcomment %}
+  {% if video_url != '' %}
+    <div class="product__video-button-container" style="margin-top: 15px; margin-bottom: 15px;">
+      <button type="button"
+              class="button button--secondary open-product-video-button"
+              data-video-type="{{ video_type }}"
+              data-video-src="{{ video_url | escape }}"
+              aria-label="Ver video del producto">
+        {% comment %} Puedes cambiar el texto del botón aquí {% endcomment %}
+        Ver Video del Producto
+      </button>
+    </div>
+  {% endif %}
+{%- endif -%}
 
 
 
