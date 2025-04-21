@@ -105,6 +105,76 @@
                     </h2>
                   </a>
                 </div>
+
+
+
+
+
+
+                <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+                <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
+
+                 {% comment %}
+    Buscar el primer video (alojado en Shopify o externo) asociado al producto.
+  {% endcomment %}
+  {%- assign first_video = null -%}
+  {%- for media in product.media -%}
+    {%- if media.media_type == 'video' or media.media_type == 'external_video' -%}
+      {%- assign first_video = media -%}
+      {%- break -%}
+    {%- endif -%}
+  {%- endfor -%}
+
+  {% comment %}
+    Si se encontró un video, renderizar el botón.
+  {% endcomment %}
+  {%- if first_video -%}
+    {%- liquid
+      assign video_url = ''
+      assign video_type = first_video.media_type
+
+      # Construir la URL adecuada para el iframe o la etiqueta de video
+      if video_type == 'external_video'
+        if first_video.host == 'youtube'
+          assign video_url = 'https://www.youtube.com/embed/' | append: first_video.external_id | append: '?autoplay=1&mute=0&controls=1&rel=0&modestbranding=1'
+        endif
+      elsif video_type == 'video'
+        # Obtener la URL directa del video HLS
+        assign video_url = first_video.sources[0].url
+        # Asegurarse de que la URL sea absoluta
+        if video_url contains 'cdn.shopify.com'
+          assign video_url = video_url
+        else
+          assign video_url = 'https://cdn.shopify.com' | append: video_url
+        endif
+      endif
+    -%}
+
+    {% comment %} Renderizar el botón solo si tenemos una URL válida {% endcomment %}
+    {% if video_url != '' %}
+      <div class="product__video-button-container" style="margin-top: 15px; margin-bottom: 15px;">
+        <button
+          type="button"
+          class="button button--secondary open-product-video-button"
+          data-video-type="{{ video_type }}"
+          data-video-src="{{ video_url | escape }}"
+          aria-label="{{ 'products.product.watch_video' | t }}"
+        >
+          {{ 'products.product.watch_video' | t }}
+        </button>
+      </div>
+    {% endif %}
+  {%- endif -%}
+
+
+
+
+
+
+
+
+
+              <div>{{ video_url }}</div>
               {%- when 'price' -%}
                 <div id="price-{{ section.id }}" role="status" {{ block.shopify_attributes }}>
                   {%- render 'price',
@@ -666,9 +736,152 @@
             {{ 'products.product.view_full_details' | t }}
             {{- 'icon-arrow.svg' | inline_asset_content -}}
           </a>
+
+                  <div id="product-video-modal" class="product-video-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="product-video-modal-title">
+          <div class="product-video-modal__overlay" tabindex="-1" data-close-modal></div>
+          <div class="product-video-modal__content">
+            <h2 id="product-video-modal-title" class="visually-hidden">Video del Producto</h2> <button class="product-video-modal__close" aria-label="Cerrar modal" data-close-modal>&times;</button>
+            <div class="product-video-modal__video-container" id="product-video-container">
+              </div>
+          </div>
+        </div>
         </section>
       </div>
     </div>
+    
+
+
+    <script>
+document.addEventListener('DOMContentLoaded', function () {
+  const videoModal = document.getElementById('product-video-modal');
+  const videoContainer = document.getElementById('product-video-container');
+  const openVideoButtons = document.querySelectorAll('.open-product-video-button');
+
+  if (!videoModal || !videoContainer || openVideoButtons.length === 0) {
+    console.warn('Elementos necesarios para el modal de video no encontrados.');
+    return;
+  }
+
+  const openModal = (videoType, videoSrc) => {
+    // Limpiar cualquier formato incorrecto en videoSrc
+    let cleanedVideoSrc = videoSrc;
+    if (typeof videoSrc === 'string' && videoSrc.startsWith('[') && videoSrc.endsWith(']')) {
+      cleanedVideoSrc = videoSrc.slice(1, -1).replace(/"/g, '');
+      console.warn('URL corregida:', cleanedVideoSrc);
+    }
+
+    console.log('Abriendo modal con videoType:', videoType, 'videoSrc:', cleanedVideoSrc);
+
+    // Limpiar contenedor
+    videoContainer.innerHTML = '';
+
+    let videoElement;
+    if (videoType === 'external_video') {
+      console.log('Configurando iframe para video externo');
+      videoElement = document.createElement('iframe');
+      videoElement.src = cleanedVideoSrc;
+      videoElement.setAttribute('frameborder', '0');
+      videoElement.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+      videoElement.setAttribute('allowfullscreen', '');
+    } else if (videoType === 'video') {
+      console.log('Configurando video HLS alojado en Shopify');
+      videoElement = document.createElement('video');
+      videoElement.className = 'video-js vjs-fluid'; // Preparar para Video.js
+      videoElement.controls = true;
+      videoElement.autoplay = true;
+      videoElement.playsInline = true;
+      videoElement.muted = true; // Forzar muted para garantizar autoplay
+
+      // Crear una fuente para el video HLS
+      const sourceElement = document.createElement('source');
+      sourceElement.src = cleanedVideoSrc;
+      sourceElement.type = 'application/x-mpegURL';
+      videoElement.appendChild(sourceElement);
+
+      // Añadir eventos para depuración
+      videoElement.addEventListener('error', () => {
+        console.error('Error al cargar el video HLS:', cleanedVideoSrc, videoElement.error);
+      });
+      videoElement.addEventListener('play', () => {
+        console.log('Video HLS comenzó a reproducirse');
+      });
+      videoElement.addEventListener('loadedmetadata', () => {
+        console.log('Metadatos del video cargados');
+      });
+    }
+
+    if (videoElement) {
+      videoContainer.appendChild(videoElement);
+      videoModal.style.display = 'flex';
+      videoModal.classList.add('is-open');
+
+      // Enfocar el botón de cierre para accesibilidad
+      const closeButton = videoModal.querySelector('.product-video-modal__close');
+      if (closeButton) closeButton.focus();
+
+      // Intentar reproducir el video manualmente si el autoplay falla
+      if (videoType === 'video') {
+        videoElement.play().catch(error => {
+          console.error('Fallo en autoplay:', error);
+          // Intentar usar Video.js como respaldo
+          if (typeof videojs !== 'undefined') {
+            console.log('Inicializando Video.js como respaldo');
+            videojs(videoElement, {}, function () {
+              this.play().catch(err => {
+                console.error('Fallo en Video.js:', err);
+              });
+            });
+          }
+        });
+      }
+    } else {
+      console.error('No se pudo crear el elemento de video para el tipo:', videoType);
+    }
+  };
+
+  const closeModal = () => {
+    console.log('Cerrando modal de video');
+    videoModal.style.display = 'none';
+    videoModal.classList.remove('is-open');
+    // Limpiar y detener el video
+    videoContainer.innerHTML = '';
+  };
+
+  // Abrir modal al hacer clic en el botón
+  openVideoButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const videoType = button.dataset.videoType;
+      const videoSrc = button.dataset.videoSrc;
+      console.log('Botón clicado - videoType:', videoType, 'videoSrc:', videoSrc);
+      if (videoType && videoSrc) {
+        openModal(videoType, videoSrc);
+      } else {
+        console.error('Faltan datos de video en el botón:', button);
+      }
+    });
+  });
+
+  // Cerrar modal al hacer clic en el overlay o el botón de cierre
+  videoModal.addEventListener('click', event => {
+    if (event.target.matches('.product-video-modal__overlay') || event.target.closest('[data-close-modal]')) {
+      closeModal();
+    }
+  });
+
+  // Cerrar modal con la tecla Escape
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && videoModal.classList.contains('is-open')) {
+      closeModal();
+    }
+  });
+});
+
+
+
+    </script>
+
+
+
 
     {% render 'product-media-modal', variant_images: variant_images %}
 
@@ -706,6 +919,7 @@
     {%- if first_3d_model -%}
       <script type="application/json" id="ProductJSON-{{ product.id }}">
         {{ product.media | where: 'media_type', 'model' | json }}
+        
       </script>
       <script src="{{ 'product-model.js' | asset_url }}" defer></script>
     {%- endif -%}
@@ -720,6 +934,10 @@
 
     <script type="application/ld+json">
       {{ product | structured_data }}
+    </script>
+
+    <script>
+      <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     </script>
   </div>
 </product-info>
