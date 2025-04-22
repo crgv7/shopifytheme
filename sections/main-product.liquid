@@ -744,57 +744,143 @@
       </div>
     </div>
     
-
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
     <script>
-document.addEventListener('DOMContentLoaded', function() {
+      document.addEventListener('DOMContentLoaded', function() {
   const videoModal = document.getElementById('product-video-modal');
   const videoContainer = document.getElementById('product-video-container');
   const openVideoButtons = document.querySelectorAll('.open-product-video-button');
 
   if (!videoModal || !videoContainer || openVideoButtons.length === 0) {
-    // Si no existen los elementos necesarios, no hacer nada.
     return;
   }
 
+  let hlsInstance = null; // Variable para guardar la instancia de HLS
+
   const openModal = (videoType, videoSrc) => {
-    // Limpiar contenedor por si acaso
-    videoContainer.innerHTML = '';
+    videoContainer.innerHTML = ''; // Limpiar contenedor
+
+    // Destruir instancia HLS anterior si existe
+    if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
 
     let videoElement;
+    // Caso 1: Video Externo (YouTube, Vimeo) - Usa Iframe
     if (videoType === 'external_video') {
       videoElement = document.createElement('iframe');
       videoElement.setAttribute('src', videoSrc); // La URL ya incluye autoplay
       videoElement.setAttribute('frameborder', '0');
       videoElement.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
       videoElement.setAttribute('allowfullscreen', '');
+      videoContainer.appendChild(videoElement);
+      videoModal.style.display = 'flex';
+      videoModal.classList.add('is-open');
+
+    // Caso 2: Video Alojado (Potencialmente HLS o MP4 directo)
     } else if (videoType === 'video') {
       videoElement = document.createElement('video');
-      videoElement.setAttribute('src', videoSrc);
       videoElement.setAttribute('controls', '');
-      videoElement.setAttribute('autoplay', '');
-      videoElement.setAttribute('playsinline', ''); // Importante para móviles
-      videoElement.setAttribute('muted', ''); // Autoplay a menudo requiere estar muteado inicialmente en algunos navegadores
+      videoElement.setAttribute('playsinline', '');
+      videoElement.setAttribute('autoplay', ''); // Intentar autoplay (puede requerir mute)
+      videoElement.setAttribute('muted', 'true'); // Añadir muted para mejorar probabilidad de autoplay
+
+      // Detectar si es HLS (usando la extensión .m3u8 o el tipo MIME si lo pasaste)
+      // Comprobación simple por extensión de archivo:
+      console.log('Video source: ', videoSrc);
+      const isHls = videoSrc.includes('.m3u8');
+
+      if (isHls && Hls.isSupported()) {
+        // Usar hls.js si es HLS y el navegador lo soporta
+        console.log("HLS source detected, using hls.js");
+        hlsInstance = new Hls(); // Crear nueva instancia
+        hlsInstance.loadSource(videoSrc);
+        hlsInstance.attachMedia(videoElement);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+          videoElement.play().catch(e => console.log("Autoplay prevented:", e)); // Intentar play después de cargar
+        });
+         hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+            console.error('HLS.js Error:', data);
+            if (data.fatal) {
+                switch(data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.error('Fatal network error encountered, trying to recover');
+                    hlsInstance.startLoad();
+                    break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.error('Fatal media error encountered, trying to recover');
+                    hlsInstance.recoverMediaError();
+                    break;
+                default:
+                    // cannot recover
+                    console.error('Unrecoverable HLS error, destroying instance');
+                    hlsInstance.destroy();
+                    hlsInstance = null;
+                    // Opcional: Mostrar mensaje de error al usuario en el modal
+                    videoContainer.innerHTML = '<p>Error al cargar el video (HLS).</p>';
+                    break;
+                }
+            }
+        });
+      } else if (videoElement.canPlayType('application/vnd.apple.mpegurl') || videoElement.canPlayType('audio/mpegurl')) {
+         // Navegador soporta HLS nativamente (Safari) o es MP4 u otro formato compatible
+         console.log("HLS source detected, using native browser support (Safari?) or direct source.");
+         videoElement.src = videoSrc;
+         videoElement.play().catch(e => console.log("Autoplay prevented:", e));
+      }
+       else {
+         // No es HLS o HLS no es soportado y no es nativo
+         console.log("Regular video source or HLS not supported, using direct src.");
+         videoElement.src = videoSrc; // Asignar src directamente para MP4 u otros formatos
+         videoElement.play().catch(e => console.log("Autoplay prevented:", e));
+       }
+
+      videoContainer.appendChild(videoElement);
+      videoModal.style.display = 'flex';
+      videoModal.classList.add('is-open');
+
+    } else {
+       console.error("Tipo de video desconocido:", videoType);
+       return; // No hacer nada si el tipo no es reconocido
     }
 
-    if (videoElement) {
-      videoContainer.appendChild(videoElement);
-      videoModal.style.display = 'flex'; // Mostrar modal usando flex
-      videoModal.classList.add('is-open'); // Añadir clase para estilos si es necesario
-      // Opcional: enfocar el modal o el botón de cierre para accesibilidad
-      const closeButton = videoModal.querySelector('.product-video-modal__close');
-      if(closeButton) closeButton.focus();
-    }
+
+    // Opcional: enfocar el modal o el botón de cierre para accesibilidad
+    const closeButton = videoModal.querySelector('.product-video-modal__close');
+    if (closeButton) closeButton.focus();
   };
 
   const closeModal = () => {
+    // Detener y limpiar el video
+    const video = videoContainer.querySelector('video');
+    const iframe = videoContainer.querySelector('iframe');
+
+    if (video) {
+      video.pause();
+      video.src = ""; // Limpiar fuente
+    }
+    if (iframe) {
+       // Truco común para detener iframes de video es limpiar el src
+       const currentSrc = iframe.src;
+       iframe.src = '';
+       // Podrías intentar restaurar el src sin autoplay si fuera necesario, pero limpiar suele bastar.
+    }
+
+    // Destruir la instancia de HLS si existe
+    if (hlsInstance) {
+      console.log("Destroying HLS instance");
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+
+    videoContainer.innerHTML = ''; // Vaciar completamente el contenedor
     videoModal.style.display = 'none';
     videoModal.classList.remove('is-open');
-    // Detener y limpiar el video para evitar que siga sonando
-    videoContainer.innerHTML = '';
   };
 
-  // Event listener para los botones que abren el modal
+  // --- (El resto de los event listeners para abrir/cerrar modal permanecen igual) ---
   openVideoButtons.forEach(button => {
     button.addEventListener('click', function() {
       const videoType = this.dataset.videoType;
@@ -805,21 +891,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Event listeners para cerrar el modal (botón de cierre y overlay)
   videoModal.addEventListener('click', function(event) {
-    // Cerrar si se hace clic en el overlay o en un elemento con data-close-modal
     if (event.target.matches('.product-video-modal__overlay') || event.target.closest('[data-close-modal]')) {
       closeModal();
     }
   });
 
-  // Event listener para cerrar con la tecla Escape
   document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape' && videoModal.style.display === 'flex') {
       closeModal();
     }
   });
 });
+
 
 
 
