@@ -113,8 +113,12 @@
 
 
 {% comment %}
+  Agregando boton              
   Buscar el primer video (alojado en Shopify o externo) asociado al producto.
 {% endcomment %}
+
+
+
 {%- assign first_video = null -%}
 {%- for media in product.media -%}
   {%- if media.media_type == 'video' or media.media_type == 'external_video' -%}
@@ -164,7 +168,10 @@
 
 
 
-
+{% comment %}
+  Agregando boton              
+  Buscar el primer video (alojado en Shopify o externo) asociado al producto.
+{% endcomment %}
 
 
 
@@ -744,8 +751,18 @@
       </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
+
+
+
+{% comment %}
+ Javascript para el video del producto             
+{% endcomment %}
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
   const videoModal = document.getElementById('product-video-modal');
@@ -911,6 +928,9 @@
 
 
 
+{% comment %}
+ Fin Javascript para el video del producto             
+{% endcomment %}
 
     {% render 'product-media-modal', variant_images: variant_images %}
 
