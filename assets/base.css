@@ -11,9 +11,24 @@
 
 
 /* Estilos para el contenedor del botón (opcional, ajusta márgenes si es necesario) */
-.product__video-button-container {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+.product__media-wrapper {
+  position: relative;
+}
+
+.product__video-button-container--floating {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  margin: 0;
+  padding: 4px 8px;   /* Opcional: espacio interno */
+}
+
+.product__video-button-container--floating button {
+  color: #fff;
+  background: #000;
+  border: none;
+  opacity: 80%;
 }
 
 /* Estilos básicos para el Modal de Video */
