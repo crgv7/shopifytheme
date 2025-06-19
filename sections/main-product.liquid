@@ -117,6 +117,7 @@
 
   {% comment %} Renderizar el botón solo si tenemos una URL válida {% endcomment %}
   <div class="product__media-wrapper">
+    {% comment %} 
   {% if video_url != '' %}
     <div class="product__video-button-container--floating">
       <button type="button"
@@ -124,11 +125,12 @@
               data-video-type="{{ video_type }}"
               data-video-src="{{ video_url | escape }}"
               aria-label="Ver video del producto">
-        {% comment %} Puedes cambiar el texto del botón aquí {% endcomment %}
+  
         Ver Video del Producto
       </button>
     </div>
   {% endif %}
+{% endcomment %}
 {%- endif -%}
 
 

@@ -26,6 +26,18 @@
       {{ 'icon-close.svg' | inline_asset_content }}
     </button>
 
+    {% comment %} Añadir botón Añadir al Carrito para móviles {% endcomment %}
+    <div class="product-media-modal__cart-button-container large-up-hide">
+      <button
+        type="button"
+        class="button button--primary"
+        onclick="document.querySelector('.product-form__submit').click()"
+        aria-label="{{ 'products.product.add_to_cart' | t }}"
+      >
+        {{ 'products.product.add_to_cart' | t }}
+      </button>
+    </div>
+
     <div
       class="product-media-modal__content color-{{ section.settings.color_scheme }} gradient"
       role="document"
@@ -55,3 +67,18 @@
     </div>
   </div>
 </product-modal>
+
+<style>
+  .product-media-modal__cart-button-container {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: 100%;
+    text-align: center;
+  }
+  .product-media-modal__cart-button-container .button {
+    margin: 0 auto;
+  }
+</style>
