@@ -31,7 +31,31 @@
       <button
         type="button"
         class="button button--primary"
-        onclick="document.querySelector('.product-form__submit').click()"
+        onclick="
+          document.querySelector('.product-form__submit').click();
+          
+          // Crear notificación
+          const notification = document.createElement('div');
+          notification.textContent = '¡Producto añadido al carrito!';
+          notification.style.position = 'fixed';
+          notification.style.bottom = '20px';
+          notification.style.left = '50%';
+          notification.style.transform = 'translateX(-50%)';
+          notification.style.backgroundColor = '#000';
+          notification.style.color = '#fff';
+          notification.style.padding = '10px 20px';
+          notification.style.borderRadius = '4px';
+          notification.style.zIndex = '10000';
+          document.body.appendChild(notification);
+          
+          // Eliminar notificación después de 3 segundos
+          setTimeout(() => {
+            notification.remove();
+          }, 3000);
+          
+          // Cerrar el modal
+          document.getElementById('ModalClose-{{ section.id }}').click();
+        "
         aria-label="{{ 'products.product.add_to_cart' | t }}"
       >
         {{ 'products.product.add_to_cart' | t }}
@@ -77,8 +101,35 @@
     z-index: 10;
     width: 100%;
     text-align: center;
+    Feedback submitted
+    
   }
   .product-media-modal__cart-button-container .button {
     margin: 0 auto;
+  }
+  
+  .cart-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-background);
+    color: var(--color-foreground);
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    transition: opacity 0.3s ease;
+  }
+  
+  .cart-notification__inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .cart-notification__inner p {
+    margin: 0;
+    font-weight: 500;
   }
 </style>
