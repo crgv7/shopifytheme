@@ -30,7 +30,7 @@
     <div class="product-media-modal__cart-button-container large-up-hide">
       <button
         type="button"
-        class="button button--primary"
+        class="button-custom"
         onclick="
           document.querySelector('.product-form__submit').click();
           
@@ -108,7 +108,6 @@
     margin: 0 auto;
   }
   
-
   
   .cart-notification__inner {
     display: flex;
@@ -119,5 +118,20 @@
   .cart-notification__inner p {
     margin: 0;
     font-weight: 500;
+  }
+   .button-custom {
+    background-color: #000;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+   
   }
 </style>
